@@ -5,6 +5,9 @@ o gráfico do Total Geral por faixa de 30 min (hoje × média geral ou do dia da
 Publicado pelo GitHub Pages em <https://wro1984.github.io/CO_URA/> a partir da branch `main`. **Todo push na `main` vai
 para o ar em cerca de 1 minuto**, para todos os usuários.
 
+**Topo padrão dos apps** (igual no Problemas Sistêmicos e no Nível de Serviço): botão de voltar ao HUB (ícone de grade,
+`#btHub`) à esquerda, botões do app à direita. No desktop o topo e o menu de baixo ficam na coluna de 760 px do conteúdo.
+
 Leia este arquivo inteiro antes de mudar qualquer coisa.
 
 ## Como funciona

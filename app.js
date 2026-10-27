@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
   const CONFERIR_MS = 60 * 1000;
   const FRESCO_MIN = 15;              // coleta mais velha que isso (de hoje): o ponto do topo fica cinza
   const HUB_URL = new URL('/', location.href).href;
