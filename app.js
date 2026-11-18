@@ -7,10 +7,12 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
   const CONFERIR_MS = 60 * 1000;
   const FRESCO_MIN = 15;              // coleta mais velha que isso (de hoje): o ponto do topo fica cinza
   const HUB_URL = new URL('/', location.href).href;
+  // aberto dentro do "HUB de Apps" do MAPI (?mapi): sem login do HUB, sem baixar o dados.json, sem service worker; os dados vêm do MAPI por mensagem
+  const MODO_MAPI = window.parent !== window && new URLSearchParams(location.search).has('mapi');
   const PROB_URL = new URL('/CO_PROB/', location.href).href;
   const SEM_FALHAS = 'Sem Falhas Massivas em Aberto! Sistemas Operando Normalmente.';
 
@@ -47,7 +49,26 @@
     } catch (e) { /* sem cache: nada a apagar */ }
   }
 
+  // ---------- modo MAPI ----------
+  // O app avisa `ura:pronto` (só o aviso, sem dado algum) e o MAPI responde `ura:dados` com o resumo já aberto, a quem tem o app
+  // liberado para a matrícula. Cada conferência automática repete o pedido. Só vale a mensagem da janela pai.
+  let esperaMapi = null;
+  function pedirAoMapi() {
+    clearTimeout(esperaMapi);
+    window.parent.postMessage({ tipo: 'ura:pronto', versao: APP_VERSION }, '*');
+    if (!resumo) esperaMapi = setTimeout(() => { if (!resumo) telaAviso('O MAPI não respondeu', 'Volte e abra o app de novo pelo HUB de Apps do MAPI.', false); }, 20000);
+  }
+  function receberDoMapi(e) {
+    if (e.source !== window.parent || !e.data || e.data.tipo !== 'ura:dados') return;
+    clearTimeout(esperaMapi);
+    const d = e.data.dados;
+    if (e.data.erro || !d || !Array.isArray(d.secoes)) { if (!resumo) telaAviso('Não deu para abrir', e.data.erro ? String(e.data.erro) : 'O MAPI mandou dados em formato desconhecido.', false); return; }
+    resumo = d; gerado = null; cred = null;
+    marcarOffline(null); desenhar();
+  }
+
   async function carregar() {
+    if (MODO_MAPI) return pedirAoMapi();
     cred = await K.lerCredHub();
     if (!cred) { resumo = null; await apagarCopia(); return telaAviso('Entre pelo HUB',
       'Este app abre com o login do HUB dos apps. Entre no HUB com sua matrícula e chave e toque no atalho da URA.', true); }
@@ -212,12 +233,13 @@
         ${a.segmento && a.segmento !== '—' ? `<span class="l">Segmento: ${esc(a.segmento)}</span>` : ''}
       </div>`).join('') : `<p class="vazio">${esc(SEM_FALHAS)}</p>`;
     return `<section class="secA"><h3>Falhas massivas <span>${esc(fmtNum(f.abertas || 0))} aberta(s) · ${esc(fmtNum(f.hoje || 0))} hoje</span></h3>
-      ${itens}<a class="bt sec" href="${esc(PROB_URL)}">Abrir o Problemas Sistêmicos</a></section>`;
+      ${itens}<a class="bt sec" href="${esc(PROB_URL)}"${MODO_MAPI ? ' target="_blank" rel="noopener"' : ''}>Abrir o Problemas Sistêmicos</a></section>`;
   }
 
   // ---------- início ----------
   function iniciar() {
     $('btHub').href = HUB_URL;
+    if (MODO_MAPI) { $('btHub').hidden = true; window.addEventListener('message', receberDoMapi); }
     $('btAtualizar').onclick = () => carregar();
     $('nav').querySelectorAll('button').forEach(b => { b.onclick = () => { aba = b.dataset.aba; desenhar(); window.scrollTo(0, 0); }; });
     if (K.VERSAO !== APP_VERSION) {         // arquivos de versões diferentes no cache: atualiza antes de abrir
@@ -228,7 +250,7 @@
     carregar();
     setInterval(() => { if (document.visibilityState === 'visible') carregar(); }, CONFERIR_MS);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') carregar(); });
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+    if (!MODO_MAPI && 'serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 
   window.URAApp = { APP_VERSION };
