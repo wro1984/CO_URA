@@ -7,7 +7,7 @@
 (function () {
   'use strict';
 
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
   const CONFERIR_MS = 60 * 1000;
   const FRESCO_MIN = 15;              // coleta mais velha que isso (de hoje): o ponto do topo fica cinza
   const HUB_URL = new URL('/', location.href).href;
@@ -144,11 +144,21 @@
   }
 
   function card(c, destaque) {
+    const ns = String(c.id || '').startsWith('ns5m_');
     const valor = c.formato === 'pct' ? fmtPct(c.valor) : fmtNum(c.valor);
-    const nome = c.legenda ? `${c.titulo} · ${c.legenda}` : c.titulo;
+    // legenda curta vai junto do nome ("Total Dani · Chat"); a longa vai para a linha de baixo (o nome é cortado em uma linha só);
+    // a que o título já diz ("Total Chat URA" + "Chat URA") não se repete
+    const jaDito = !c.legenda || String(c.titulo).includes(c.legenda);
+    const curta = !ns && !jaDito && c.legenda.length <= 12;
+    const nome = curta ? `${c.titulo} · ${c.legenda}` : c.titulo;
+    const legLonga = !ns && !jaDito && !curta ? esc(c.legenda) : '';
+    const faixa = ns && c.ns_30m != null && c.faixa ? `faixa ${esc(c.faixa)}: ${esc(fmtPct(c.ns_30m))}` : '';
     const linha = [chipVar(c.variacao_pct, c.tendencia), c.projecao != null ? `projeção ${esc(fmtNum(c.projecao))}` : '',
-      c.nota ? esc(c.nota) : '', c.pausado ? 'em manutenção no painel' : ''].filter(Boolean).join(' ');
-    return `<div class="cA${destaque ? ' destaque' : ''}"><span class="n">${esc(nome)}</span><span class="v num">${esc(valor)}</span>${linha ? `<span class="l">${linha}</span>` : ''}</div>`;
+      c.participacao_pct != null ? `${esc(c.participacao_pct)}% do Total URA` : '',
+      legLonga, c.nota ? esc(c.nota) : '', faixa, c.pausado ? 'em manutenção no painel' : ''].filter(Boolean).join(' ');
+    const contas = ns && c.legenda ? `<span class="l">${esc(c.legenda)}</span>` : '';
+    const cls = ns && !c.pausado ? ` ns ${G.classeNS(c.valor)}` : '';
+    return `<div class="cA${destaque ? ' destaque' : ''}${cls}"><span class="n">${esc(nome)}</span><span class="v num">${esc(c.pausado ? 'PAUSADO' : valor)}</span>${contas}${linha ? `<span class="l">${linha}</span>` : ''}</div>`;
   }
 
   function secao(s) {
@@ -156,8 +166,15 @@
     let corpo;
     if (!cards.length) corpo = `<p class="vazio">${esc(s.aviso || 'Sem dados nesta seção agora.')}</p>`;
     else {
-      const primeiro = s.serie && s.serie.faixas && s.serie.faixas.length ? cardGrafico(cards[0], s.serie) : card(cards[0], true);
-      corpo = `${s.aviso ? `<p class="vazio">${esc(s.aviso)}</p>` : ''}<div class="gradeA">${primeiro}${cards.slice(1).map(c => card(c, false)).join('')}</div>`;
+      const aviso = s.aviso ? `<p class="vazio">${esc(s.aviso)}</p>` : '';
+      const blocos = s.id === 'registro_dia' ? G.blocosRegistro(cards) : [{ id: 'principal', titulo: null, cards }];
+      corpo = aviso + blocos.map((b, i) => {
+        // o primeiro card da seção é o destaque (com o gráfico, quando o agente manda a série)
+        const itens = b.cards.map((c, j) => (i === 0 && j === 0)
+          ? (s.serie && s.serie.faixas && s.serie.faixas.length ? cardGrafico(c, s.serie) : card(c, true))
+          : card(c, false)).join('');
+        return `${b.titulo ? `<h4 class="subA">${esc(b.titulo)}</h4>` : ''}<div class="gradeA${b.cards.length === 3 ? ' tres' : ''}">${itens}</div>`;
+      }).join('');
     }
     return `<section class="secA"><h3>${esc(s.titulo)} <span>${s.dados_ate ? 'até ' + esc(s.dados_ate) : ''}</span></h3>${corpo}</section>`;
   }

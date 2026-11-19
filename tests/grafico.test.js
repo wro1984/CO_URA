@@ -54,3 +54,26 @@ test('botão do dia da semana só de segunda a sexta', () => {
   assert.strictEqual(G.nomeDia(Object.assign({}, serie, { dia_semana: 'Terça' })), 'terças');
   assert.strictEqual(G.nomeDia(Object.assign({}, serie, { media_dia_semana: null })), null);
 });
+
+test('NS 5M: faixas de cor do painel (verde >= 70, amarelo 40 a 69,9, vermelho < 40)', () => {
+  assert.deepStrictEqual([90, 70, 69.9, 40, 39.9, 17.3, null].map(G.classeNS), ['ok', 'ok', 'med', 'med', 'ruim', 'ruim', '']);
+});
+
+test('Registro do Dia em blocos: Total Geral, abertura do Total URA e NS 5M', () => {
+  const ids = ['ns5m_tel', 'total_co', 'total_geral', 'ns5m_ura', 'total_ura', 'total_chat_ura', 'total_tel', 'ns5m_co', 'total_dani',
+    'manobra_offline', 'manobra_off_geral'];
+  const blocos = G.blocosRegistro(ids.map(id => ({ id })));
+  assert.deepStrictEqual(blocos.map(b => b.id), ['principal', 'abertura', 'ns']);
+  assert.deepStrictEqual(blocos[0].cards.map(c => c.id), ['total_geral', 'total_dani', 'total_ura', 'manobra_offline', 'manobra_off_geral']);
+  assert.deepStrictEqual(blocos[1].cards.map(c => c.id), ['total_co', 'total_tel', 'total_chat_ura']);
+  assert.deepStrictEqual(blocos[2].cards.map(c => c.id), ['ns5m_ura', 'ns5m_co', 'ns5m_tel']);
+});
+
+test('Registro do Dia: card novo do painel cai no primeiro bloco; agente antigo segue numa grade só', () => {
+  const novo = G.blocosRegistro([{ id: 'total_geral' }, { id: 'total_chat_ura' }, { id: 'card_que_nao_conheco' }]);
+  assert.deepStrictEqual(novo[0].cards.map(c => c.id), ['total_geral', 'card_que_nao_conheco']);
+  const antigo = G.blocosRegistro([{ id: 'total_geral' }, { id: 'total_co' }, { id: 'total_tel' }]);
+  assert.strictEqual(antigo.length, 1);
+  assert.strictEqual(antigo[0].titulo, null);
+  assert.deepStrictEqual(antigo[0].cards.map(c => c.id), ['total_geral', 'total_co', 'total_tel']);
+});

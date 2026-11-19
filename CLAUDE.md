@@ -95,3 +95,7 @@ com o resumo já aberto (`{dados}` ou `{erro}`); só vale a mensagem da janela p
 Fora de um quadro, `?mapi` não muda nada (o login do HUB continua obrigatório). O MAPI só entrega os dados a quem tem o app liberado na
 matrícula. O link para o Problemas Sistêmicos abre em nova aba nesse modo. Não mude os nomes das mensagens sem mudar `hub_embed.py` do MAPI
 junto. Testes: `tests/modo_mapi.test.js`.
+
+## Registro do Dia em blocos (1.3.0)
+
+Desde 19/11/2026 o agente do MAPI manda também `total_chat_ura` (o Total URA agora é CO + TEL + Chat) e os três NS 5M (`ns5m_ura`, `ns5m_co`, `ns5m_tel`). `blocosRegistro()` em `grafico.js` divide a seção `registro_dia` em três blocos (principal, abertura do Total URA, nível de serviço); sem os cards novos (agente antigo) tudo segue numa grade só. A cor do NS vem de `classeNS()` (verde ≥ 70%, amarelo 40% a 69,9%, vermelho < 40%, igual ao painel). Campos extras do card (opcionais): `participacao_pct`, `atendidas_5min`, `recebidas`, `ns_30m`, `faixa`. O app só mostra: nenhuma conta do NS é refeita aqui.

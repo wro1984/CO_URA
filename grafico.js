@@ -77,6 +77,27 @@
   const PLURAL = { segunda: 'segundas', terca: 'terças', 'terça': 'terças', quarta: 'quartas', quinta: 'quintas', sexta: 'sextas' };
   const nomeDia = serie => serie && serie.media_dia_semana ? (PLURAL[String(serie.dia_semana || '').toLowerCase()] || 'dia da semana') : null;
 
-  const api = { tendencia, ultimoIdx, acumulado, variacao, topo, geometria, nomeDia, fmtEixo };
+  // NS 5M: faixas de cor do painel (legenda da matriz): verde >= 70%, amarelo 40% a 69,9%, vermelho < 40%
+  const classeNS = v => v == null ? '' : Number(v) >= 70 ? 'ok' : Number(v) >= 40 ? 'med' : 'ruim';
+
+  // Registro do Dia desde 19/11/2026: o Total Geral e o que o compõe; a abertura do Total URA (CO, TEL, Chat); o NS 5M.
+  // Só divide quando o agente já manda os cards novos (agente antigo: tudo numa grade só, como antes).
+  const BLOCOS_REGISTRO = [
+    { id: 'principal', titulo: null, ids: ['total_geral', 'total_dani', 'total_ura', 'manobra_offline', 'manobra_off_geral'] },
+    { id: 'abertura', titulo: 'Abertura do Total URA', ids: ['total_co', 'total_tel', 'total_chat_ura'] },
+    { id: 'ns', titulo: 'Nível de serviço · 5 min', ids: ['ns5m_ura', 'ns5m_co', 'ns5m_tel'] }
+  ];
+  function blocosRegistro(cards) {
+    cards = cards || [];
+    const ids = new Set(cards.map(c => c.id));
+    if (!['total_chat_ura', 'ns5m_ura', 'ns5m_co', 'ns5m_tel'].some(i => ids.has(i))) return [{ id: 'principal', titulo: null, cards }];
+    const usados = new Set(BLOCOS_REGISTRO.flatMap(b => b.ids));
+    const porId = new Map(cards.map(c => [c.id, c]));
+    const blocos = BLOCOS_REGISTRO.map(b => ({ id: b.id, titulo: b.titulo, cards: b.ids.map(i => porId.get(i)).filter(Boolean) }));
+    blocos[0].cards.push(...cards.filter(c => !usados.has(c.id)));      // card que o painel ganhar depois cai no primeiro bloco
+    return blocos.filter(b => b.cards.length);
+  }
+
+  const api = { tendencia, ultimoIdx, acumulado, variacao, topo, geometria, nomeDia, fmtEixo, classeNS, blocosRegistro };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.URAGrafico = api;
 })(typeof self !== 'undefined' ? self : globalThis);
